@@ -54,7 +54,7 @@ world_w_gii_gdf["gii_diff_2010_and_2019"] <- world_w_gii_gdf$gii_2019 - world_w_
 #------------------------------------------------------------------------------
 # Part 4: Visualise the gii data 
 #------------------------------------------------------------------------------
-
+ 
 # make a simple plot to show the gii_2010 data 
 plot(world_w_gii_gdf %>% select(all_of(c("gii_2019","geometry"))))
 
