@@ -2,8 +2,12 @@
 title: "Week_4_Homework"
 author: "Tariro Mashongamhende"
 date: "2024-10-25"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
+
+```{r}
 library(sf)
 library(here)
 library(terra)
@@ -13,6 +17,7 @@ library(tmap)
 library(tidyverse)
 #install.packages('countrycode')
 library(countrycode)
+```
 
 
 #------------------------------------------------------------------------------
@@ -68,7 +73,7 @@ world_w_gii_gdf["gii_diff_2010_and_2019"] <- world_w_gii_gdf$gii_2019 - world_w_
 #------------------------------------------------------------------------------
 ```{r}
 # make a simple plot to show the gii_2010 data 
-plot(world_w_gii_gdf %>% select(all_of(c("gii_2019","geometry"))))
+plot(world_w_gii_gdf %>% select(all_of(c("gii_2010","geometry"))))
 ```
 ```{r}
 # make a simple plot to show the gii_2019 data 
