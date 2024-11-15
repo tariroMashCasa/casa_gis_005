@@ -344,9 +344,68 @@ dbplot + theme_bw() + coord_equal()
 # To add a basemap you can first create a bounding box based on the Harrow geom
 harrow_wgs_bb <- Harrow %>% st_transform(., 4326) %>% st_bbox()
 
+
+
+# the osm library in R doesn't work on new Macbooks - so ignore the code below
+
 #library(OpenStreetMap)
-#OpenStreetMap::openmap(c(harrow_wgs_bb)[0],c(harrow_wgs_bb)[1])
+#basemap <- OpenStreetMap::openmap(c(51.5549876,-0.4040502),c(51.6405356,-0.2671315),
+#                                  zoom=NULL,
+#                                  "osm")
 
 # now convert this to BNG
 
 st_transform(harrow_wgs_bb, st_crs(Harrow))
+
+
+# the code below will now try to plot a basemap, the convex hulls polygons 
+# and the points 
+# 
+
+tmap_mode("view")
+tm_basemap(c(StreetMap = "OpenStreetMap",
+             TopoMap = "OpenTopoMap")) +
+  tm_tiles(c(TonerHybrid = "Stamen.TonerHybrid"))+
+  tm_shape(Harrow) +
+  tm_polygons(col = NA, alpha = 0.5) +
+  tmap::tm_shape(blue_plaques_in_harrow_gdf) + 
+  tm_dots(col = "blue")
+
+
+# to view the clusters as convex hulls you first need to convert the chulls 
+# dataframe to a sf object
+
+chulls_sf <- chulls %>% st_as_sf(
+  coords = c("coords.x1", "coords.x2"), crs=st_crs(london_gdf)
+)
+
+chulls_tmap_ready <- chulls_sf %>%
+                    group_by( dbcluster ) %>%
+                    summarise( geometry = st_combine( geometry ) ) %>%
+                    st_convex_hull()
+
+# next you need to then convert this dataframe to convex hulls based on the 
+# hull column
+
+
+
+
+#create simple feature
+
+            
+#chulls_geoms <- geom_polygon(data = chulls, 
+#             aes(coords.x1,coords.x2, group=db_cluster), 
+#             alpha = 0.5) 
+
+tmap_mode("view")
+tm_basemap(c(StreetMap = "OpenStreetMap",
+             TopoMap = "OpenTopoMap")) +
+  tm_tiles(c(TonerHybrid = "CartoDB.Positron"))+
+  tm_shape(Harrow) +
+  tm_polygons(col = "magenta", alpha = 0.05) +
+  tm_shape(chulls_tmap_ready)+
+  tm_polygons(col="darkorange", alpha=0.6)+
+  tmap::tm_shape(blue_plaques_in_harrow_gdf) + 
+  tm_dots(col = "white",size=0.1)+
+  tmap::tm_shape(blue_plaques_in_harrow_gdf) + 
+  tm_dots(col = "midnightblue",size=0.05)
