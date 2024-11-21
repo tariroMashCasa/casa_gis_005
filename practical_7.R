@@ -29,7 +29,7 @@ london_gdf <- st_read("week_7_data/statistical-gis-boundaries-london/ESRI/London
 
 
 # load the blue plaques data 
-blue_plaques_df <- read_csv("week_6_data/open-plaques-gb-2021-05-14.csv")
+blue_plaques_df <- read_csv("week_7_data/open-plaques-gb-2021-05-14.csv")
 
 # clean up the column names 
 london_gdf <- london_gdf %>% janitor::clean_names(.,"lower_camel")
@@ -53,18 +53,25 @@ blue_plaques_gdf <-  sf::st_set_crs(blue_plaques_gdf,4326)
 
 blue_plaques_gdf <- st_transform(blue_plaques_gdf, st_crs(london_gdf)) 
 
+terra::crs(london_gdf)
+terra::crs(blue_plaques_gdf)
 
 st_crs(london_gdf)
-columns(blue_plaques_df)
+
+london_blue_plaques_gdf <- st_join(blue_plaques_gdf,london_gdf)
+
+# filter out anything that didn't join 
+london_blue_plaques_gdf_2 <- london_blue_plaques_gdf %>% filter(!if_any(c(name), is.na))
+
+# let's try to replot the data agin
+
 # to quickly plot these datasets on top of each other you can do this
 tmap_mode("plot")
 
 tmap::tm_shape(london_gdf) +
-  tm_polygons(col = NA, alpha = 0.5) 
-
-tmap::tm_shape(blue_plaques_gdf) + 
+  tm_polygons(col = NA, alpha = 0.5) +
+  tmap::tm_shape(london_blue_plaques_gdf_2) + 
   tm_dots(col = "blue")
-
 
 
 
