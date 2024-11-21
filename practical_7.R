@@ -18,7 +18,7 @@ library(janitor)
 # Load data
 # -----------------------------------------------------------------------------
 
-london_gdf <- st_read("week_7_data/statistical-gis-boundaries-london/ESRI/London_Borough_Excluding_MHW.shp")
+london_gdf <- st_read("week_7_data/London-wards-2014/London-wards-2014_ESRI/London_Ward_CityMerged.shp")
 
 # convert the london_gdf to WGS84
 
@@ -43,7 +43,7 @@ london_blue_plaques_df <- dplyr::filter(blue_plaques_df, area == "London")
 # so we will filter these out explicitly
 
 london_blue_plaques_df <- london_blue_plaques_df %>% filter(!if_any(c(longitude, latitude), is.na))
-
+london_blue_plaques_df <- london_blue_plaques_df %>% filter(colour=="blue")
 
 # convert this csv into a sf object 
 blue_plaques_gdf <- st_as_sf(x = london_blue_plaques_df,                         
@@ -79,12 +79,37 @@ tmap::tm_shape(london_gdf) +
 # Preprocess 
 # -----------------------------------------------------------------------------
 
+# we're going to convert this point data to a rate - density of blue plaques 
+# (number of blue plaques / area of polygon)
+
+# first we do a spatial join of the borough names onto the points
+# calculate the number of plaques per gssCode
+london_blue_plaques_gdf_2$id <- as.character(london_blue_plaques_gdf_2$id)
+total_number_of_blue_plaques_per_gss_code <- london_blue_plaques_gdf_2 %>% group_by(gssCode) %>% summarize(number_of_plaques = n_distinct(id))
+
+total_number_of_blue_plaques_per_gss_code %>% as.data.frame() %>% select(c(-geometry))
+
+# join these onto the london_gdf by converting them both to dataframes and doing a string join
+# then convert the result back to a sf object / geodataframe
+
+london_gdf_w_num_blue_plaques <- st_as_sf(left_join(london_gdf %>% as.data.frame(),
+          total_number_of_blue_plaques_per_gss_code %>% as.data.frame() %>% select(c(-geometry)),
+          by="gssCode"))
 
 
 
+london_gdf_w_num_blue_plaques["blue_plaque_density_per_hectares"] = london_gdf_w_num_blue_plaques$number_of_plaques / london_gdf_w_num_blue_plaques$hectares
 
+# to quickly plot these datasets on top of each other you can do this
+tmap_mode("plot")
 
-
+tm_shape(london_gdf_w_num_blue_plaques) +
+  tm_polygons("blue_plaque_density_per_hectares",
+              style="jenks",
+              palette="PuOr",
+              midpoint=NA,
+              popup.vars=c("wardname", "density"),
+              title="Blue Plaque Density")
 
 # -----------------------------------------------------------------------------
 # Analyse
