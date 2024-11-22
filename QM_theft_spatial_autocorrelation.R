@@ -95,7 +95,9 @@ I_LWard_Global_Density
 # This aims to tell us if similar values are clustering or dissimilar values are
 # clustering. A value of 1 or higher typically indicates clustering of dissimilar
 # values and a value closer to 0 indicates clustering of similar values).
-# Max value is 2 and min value is 0.
+# Max value is 2 and min value is 0. In other words think of this is a measure of
+# dissimilarity. The higher the value the more dissimilar the lower the value the
+# less dissimilar.
 
 C_LWard_Global_Density <- 
   london_gdf_w_thefts %>%
