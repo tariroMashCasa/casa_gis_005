@@ -26,9 +26,10 @@ library(RColorBrewer)
 
 
 london_gdf <- st_read("/Users/tariromashongamhende/Documents/Documents - Tariro’s MacBook Pro/casa_masters/term_1/Quant_Methods/group_assignment/h3_index_l8_thefts_2022_2023.geojson")
-
+# filter the data for a specific month
+london_gdf_june<- london_gdf %>% filter(Month == "2023-06")
 # clean up the column names 
-london_gdf_w_thefts <- london_gdf %>% janitor::clean_names(.,"lower_camel")
+london_gdf_w_thefts <- london_gdf_june %>% janitor::clean_names(.,"lower_camel")
 
 # to quickly plot these datasets on top of each other you can do this
 plot(london_gdf_w_thefts)
@@ -65,7 +66,7 @@ plot(london_gdf_w_thefts$geometry, add=T)
 
 #create a spatial weights matrix from these weights
 Lward.lw <- LWard_nb %>%
-  nb2mat(., style="B")
+  nb2mat(., style="B", zero.policy = TRUE)
 
 sum(Lward.lw)
 # this is a row standardised version of the code above
@@ -76,14 +77,14 @@ sum(Lward.lw[1,])
 
 
 Lward.lw <- LWard_nb %>%
-  nb2listw(., style="C")
+  nb2listw(., style="C",zero.policy = TRUE)
 
 # 3.1 Moran's I - Global assessment of spatial autocorrelation
 # to interpret the results form the Moran's I statistic value that are close 
 # 1 indicate higher degrees of clustering and -1 indicate dispersion (separation)
 
 I_LWard_Global_Density <- london_gdf_w_thefts %>%
-  pull(theft_density) %>%
+  pull(theftDensity) %>%
   as.vector()%>%
   moran.test(., Lward.lw)
 
@@ -98,7 +99,7 @@ I_LWard_Global_Density
 
 C_LWard_Global_Density <- 
   london_gdf_w_thefts %>%
-  pull(theft_density) %>%
+  pull(theftDensity) %>%
   as.vector()%>%
   geary.test(., Lward.lw)
 
@@ -112,7 +113,7 @@ C_LWard_Global_Density
 
 G_LWard_Global_Density <- 
   london_gdf_w_thefts %>%
-  pull(theft_density) %>%
+  pull(theftDensity) %>%
   as.vector()%>%
   globalG.test(., Lward.lw)
 
@@ -129,13 +130,13 @@ G_LWard_Global_Density
 #use the localmoran function to generate I for each ward in the city
 
 I_LWard_Local_count <- london_gdf_w_thefts %>%
-  pull(number_of_thefts) %>%
+  pull(numberOfThefts) %>%
   as.vector()%>%
   localmoran(., Lward.lw)%>%
   as_tibble()
 
 I_LWard_Local_Density <- london_gdf_w_thefts %>%
-  pull(theft_density) %>%
+  pull(theftDensity) %>%
   as.vector()%>%
   localmoran(., Lward.lw)%>%
   as_tibble()
@@ -175,7 +176,7 @@ tm_shape(london_gdf_w_thefts) +
 # (diamonds) and negative outliers (donuts)
 
 Gi_LWard_Local_Density <- london_gdf_w_thefts %>%
-  pull(theft_density) %>%
+  pull(theftDensity) %>%
   as.vector()%>%
   localG(., Lward.lw)
 
