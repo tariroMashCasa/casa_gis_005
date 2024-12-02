@@ -1,0 +1,1 @@
+# this is the practical for week 8 on spatial regressions
