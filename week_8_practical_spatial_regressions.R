@@ -20,11 +20,6 @@ library(tidyr)
 
 
 
-#download a zip file containing some boundaries we want to use
-
-download.file("https://data.london.gov.uk/download/statistical-gis-boundary-files-london/9ba8c833-6370-4b11-abdc-314aa020d5e0/statistical-gis-boundaries-london.zip", 
-              destfile="prac7_data/statistical-gis-boundaries-london.zip")
-
 
 # -----------------------------------------------------------------------------
 # Load data 
@@ -311,3 +306,157 @@ model_data2 <- model2 %>%
 # also add them to the shapelayer
 LonWardProfiles <- LonWardProfiles %>%
   mutate(model2resids = residuals(model2))
+
+LonWardProfiles
+
+# to check for multicollinearity you can use the corr library
+
+library(corrr)
+
+Correlation <- LonWardProfiles %>%
+  st_drop_geometry()%>%
+  dplyr::select(average_gcse_capped_point_scores_2014,
+                unauthorised_absence_in_all_schools_percent_2013,
+                median_house_price_2014) %>%
+  mutate(median_house_price_2014 =log(median_house_price_2014))%>%
+  correlate() %>%
+  # just focus on GCSE and house prices
+  focus(-average_gcse_capped_point_scores_2014, mirror = TRUE) 
+
+
+Correlation
+
+#visualise the correlation matrix
+rplot(Correlation)
+
+
+# Another way to check for multi-collinearity is to look at Variance Inflation Factor (VIF)
+
+vif(model2)
+
+
+# to do this against a large number of different variable you would do the
+# the following: 
+
+position <- c(10:74)
+
+Correlation_all<- LonWardProfiles %>%
+  st_drop_geometry()%>%
+  dplyr::select(position)%>%
+  correlate()
+
+Correlation_all
+
+rplot(Correlation_all)
+
+
+## Assumption 4 - Homoscedasticity
+
+# The best way to check for homo/hetroscedasticity is to plot the residuals
+# in the model against the predicted values.
+
+#print some model diagnositcs. 
+par(mfrow=c(2,2))    #plot to 2 by 2 array
+plot(model2)
+
+# In the plots here we are looking for:
+  
+# * Residuals vs Fitted: a flat and horizontal line. This is looking at the linear relationship assumption between our variables
+
+# * Normal Q-Q: all points falling on the line. This checks if the residuals (observed minus predicted) are normally distributed
+
+# * Scale vs Location: flat and horizontal line, with randomly spaced points. This is the homoscedasticity (errors/residuals in the model exhibit constant / homogeneous variance). Are the residuals (also called errors) spread equally along all of the data.
+
+# * Residuals vs Leverage - Identifies outliers (or influential observations), the three largest outliers are identified with values in the plot
+
+# you can do the same thing by using the performance library
+
+library(performance)
+
+check_model(model2, check="all")
+
+## Assumption 5 - Independence of Errors
+## This assumption simply states that the residual values (errors)
+## in your model must not be correlated in any way
+
+# You would typically look for standard autocorrelation like this:
+#run durbin-watson test
+DW <- durbinWatsonTest(model2)
+tidy(DW)
+
+# HOWEVER as it's spatial data we need to do some further checks
+# check 1 is to plot your residuals on a choropleth map and see if there is any
+# visible autocorrelation 
+
+#now plot the residuals
+tmap_mode("view")
+#qtm(LonWardProfiles, fill = "model1_resids")
+
+tm_shape(LonWardProfiles) +
+  tm_polygons("model2resids",
+              palette = "RdYlBu") +
+  tm_shape(lond_sec_schools_sf) + tm_dots(col = "TYPE")
+
+# the systematic way to test for this would be to use some of the spatial 
+# methods from PPP analysis
+
+#calculate the centroids of all Wards in London
+coordsW <- LonWardProfiles%>%
+  st_centroid()%>%
+  st_geometry()
+
+plot(coordsW)
+
+#Now we need to generate a spatial weights matrix 
+#(remember from the lecture a couple of weeks ago). 
+#We'll start with a simple binary matrix of queen's case neighbours
+
+LWard_nb <- LonWardProfiles %>%
+  poly2nb(., queen=T)
+
+#or nearest neighbours
+knn_wards <-coordsW %>%
+  knearneigh(., k=4)
+
+LWard_knn <- knn_wards %>%
+  knn2nb()
+
+#plot them
+plot(LWard_nb, st_geometry(coordsW), col="red")
+
+plot(LWard_knn, st_geometry(coordsW), col="blue")
+
+#create a spatial weights matrix object from these weights
+
+Lward.queens_weight <- LWard_nb %>%
+  nb2listw(., style="W")
+
+Lward.knn_4_weight <- LWard_knn %>%
+  nb2listw(., style="W")
+
+Queen <- LonWardProfiles %>%
+  st_drop_geometry()%>%
+  dplyr::select(model2resids)%>%
+  pull()%>%
+  moran.test(., Lward.queens_weight)%>%
+  tidy()
+
+Nearest_neighbour <- LonWardProfiles %>%
+  st_drop_geometry()%>%
+  dplyr::select(model2resids)%>%
+  pull()%>%
+  moran.test(., Lward.knn_4_weight)%>%
+  tidy()
+
+## Looking at the outputs from both the Queens and hte Nerest Neighbour spatial Weights
+## Matrices we can see that there is some spatial autocorrelation we are observing which
+## means anyone interpreting this model should be aware of this as well as the things we are 
+## observing may be overstated as a result
+Queen
+
+Nearest_neighbour
+
+
+
+
+# 
